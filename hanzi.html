@@ -2,58 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Hanzi Practice Sheet</title>
+  <title>Hanzi Practice Sheet Generator</title>
   <script src="https://unpkg.com/hanzi-writer@3.3.0/dist/hanzi-writer.min.js"></script>
   <style>
-    @page {
-      size: A4 portrait;
-      margin: 0; /* Control margins via body */
-    }
-
-    body {
-      margin: 10mm; /* Margins for screen view */
-      font-family: sans-serif;
-    }
+    @page { size: A4 portrait; margin: 0; }
+    body { margin: 10mm; font-family: sans-serif; }
 
     /* --- Controls --- */
-    .controls fieldset { border: 1px solid #ccc; padding: 10px 15px 15px 15px; margin-bottom: 10px; }
+    .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 2em; }
+    .controls fieldset { border: 1px solid #ccc; padding: 10px 15px 15px 15px; margin: 0; }
     .controls legend { font-weight: bold; padding: 0 5px; }
-    .controls { margin-bottom: 1.5em; display: flex; flex-direction: column; gap: 10px; }
-    .control-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 10px; }
+    .control-group { display: flex; flex-wrap: wrap; gap: 10px 15px; align-items: center; margin-bottom: 12px; }
     .control-group:last-child { margin-bottom: 0; }
-    .controls label { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
-    .controls input[type="text"] { width: 300px; }
+    .controls label { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; font-size: 0.9em; cursor: pointer; }
+    .controls input[type="text"]#hanziInput { width: 100%; max-width: 400px; font-size: 1.1em; padding: 4px; }
+    .input-description { font-size: 0.8em; color: #666; margin: -8px 0 8px 5px; width: 100%; flex-basis: 100%; }
     .controls input[type="number"] { width: 60px; }
-    .controls input[type="color"] { width: 40px; height: 25px; padding: 1px 2px; border: 1px solid #ccc; cursor: pointer; vertical-align: middle; }
-    .controls select, .controls button { padding: 5px 8px; }
+    .controls input.pattern-input { width: 80px; font-size: 0.9em; }
+    .controls input[type="color"] { width: 35px; height: 25px; padding: 1px 2px; border: 1px solid #ccc; cursor: pointer; vertical-align: middle; }
+    .controls select, .controls button { padding: 5px 8px; cursor: pointer; font-size: 0.9em; }
     .controls button { font-weight: bold; }
+    .controls button.preset-button { font-weight: normal; background-color: #f0f0f0; border: 1px solid #ccc;}
+    .pattern-group { display: flex; align-items: center; gap: 5px; }
+    .hidden { display: none !important; }
+    .controls label.disabled, .controls select:disabled, .controls input:disabled { cursor: not-allowed; opacity: 0.6; }
 
-    /* Added Style for Attribution */
-    .attribution-notice {
-        font-size: 0.85em;
-        color: #555;
-        margin: 5px 0 15px 5px; /* Top/Bottom/Left margin */
-        padding: 0;
-        text-align: left;
-        line-height: 1.3;
-    }
-    .attribution-notice a {
-        color: #007bff;
-        text-decoration: none;
-    }
-     .attribution-notice a:hover {
-        text-decoration: underline;
-    }
-
+    /* Instructions, Attribution, Preview */
+    .instructions, .attribution-notice { font-size: 0.85em; color: #555; margin: 0 0 10px 5px; padding: 0; text-align: left; line-height: 1.3; }
+    .attribution-notice a { color: #007bff; text-decoration: none; }
+    .attribution-notice a:hover { text-decoration: underline; }
+    #livePreviewArea { border: 1px dashed #ccc; padding: 10px; margin-top: 10px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; min-height: 85px; background-color: #fafafa; }
+    #livePreviewArea .preview-item { display: flex; flex-direction: column; align-items: center; gap: 2px;}
+    #livePreviewArea .hanzi-box { width: 65px !important; height: 65px !important; margin: 0 !important; flex-shrink: 0; background-color: white; }
+    #livePreviewArea span.preview-label { font-size: 0.8em; color: #666; text-align: center; width: 100%; }
+    #livePreviewArea > span.arrow { font-size: 1.2em; color: #aaa; margin: 0 5px; align-self: center; padding-bottom: 15px; }
 
     /* --- Print Specific --- */
-    @media print {
-      .controls { display: none; } /* This hides the notice too */
-      body { margin: 5mm; }
-      .character-container { margin-bottom: 5mm; }
-      .character-row { margin-bottom: 1.5mm; }
-      .character-title { margin-bottom: 3mm; font-size: 12px; }
-    } /* End @media print */
+    @media print { .controls, #livePreviewArea { display: none; } body { margin: 5mm; } .character-container { margin-bottom: 5mm; } .character-row { margin-bottom: 1.5mm; } .character-title { margin-bottom: 3mm; font-size: 12px; } }
 
     /* --- Sheet Layout --- */
     .character-container { margin-bottom: 8mm; page-break-inside: avoid; }
@@ -62,14 +47,9 @@
     .hanzi-box { border: 1px solid black; box-sizing: border-box; display: inline-block; margin-right: 2mm; position: relative; line-height: 0; overflow: hidden; }
     .hanzi-box:last-child { margin-right: 0; }
 
-
     /* --- SVG Layers --- */
     .guide-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    .guide-svg line { stroke-width: 1; vector-effect: non-scaling-stroke; /* fill: none; set in JS */ }
-    .guide-svg.guide-style-dashed line { stroke-dasharray: 4, 2; }
-    .guide-svg.guide-style-dotted line { stroke-dasharray: 1, 2; }
-    .guide-svg.guide-style-solid line { stroke-dasharray: none; }
-    .guide-svg.guide-style-none line { stroke: none !important; }
+    .guide-svg line { stroke-width: 1; vector-effect: non-scaling-stroke; fill: none; }
     .hanzi-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: block; }
 
     /* --- Title Styling --- */
@@ -78,106 +58,340 @@
     /* --- Error Message --- */
     .error-message { color: red; padding: 5px 0 5px 1mm; font-size: 12px; margin-top: 10mm; page-break-before: avoid; }
     .loading-message { padding: 10mm; font-style: italic; text-align: center; }
-
   </style>
 </head>
 <body>
 
-<!-- Controls HTML -->
 <div class="controls">
+
+  <p class="instructions">
+    Ready to practice your Hanzi? Enter some characters, pick your style, and watch the preview transform! Then generate your custom sheet and print it out.
+  </p>
+
   <fieldset>
-    <legend>Content & Sorting</legend>
-    <div class="control-group"> <label>Enter Hanzi: <input type="text" id="hanziInput" value="爱八不北京书学汉语X"> </label> </div>
-    <div class="control-group"> <label> <input type="checkbox" id="sortStrokesInput" checked> Sort by stroke count (ascending) </label> </div>
-  </fieldset>
-  <fieldset>
-    <legend>Layout & Practice</legend>
-    <div class="control-group"> <label>Boxes per row: <input type="number" id="boxesPerRow" value="8" min="4" max="12"> </label> <label>Min Practice Boxes: <input type="number" id="minPracticeBoxesInput" value="4" min="0" max="20"> </label> <label>Min Rows: <input type="number" id="minRowsInput" value="2" min="1" max="5"> </label> </div>
-  </fieldset>
-  <fieldset>
-    <legend>Appearance</legend>
-    <div class="control-group"> <label>Guide Style: <select id="guideLineStyle"> <option value="solid" selected>Solid</option> <option value="dashed">Dashed</option> <option value="dotted">Dotted</option> <option value="none">None</option> </select> </label> <label>Guide Color: <input type="color" id="guideColorInput"> </label> <label> <input type="checkbox" id="fadedGuideInput"> Faded guide in practice boxes </label> <label>Faded Color: <input type="color" id="fadedColorInput"> </label> </div>
-    <div class="control-group"> <label>Stroke Color: <input type="color" id="strokeColorInput"> </label> <label>Prev. Stroke Color: <input type="color" id="strokeGrayColorInput"> </label> <label>Tracing Color: <input type="color" id="tracingColorInput"> </label> </div>
+    <legend>Content</legend>
+    <div class="control-group">
+        <label for="hanziInput" style="width: 100%; font-weight: bold;">Characters to Practice:</label>
+        <input type="text" id="hanziInput">
+        <p class="input-description">Which characters are you focusing on today? (Saved separately)</p>
+    </div>
+    <div class="control-group">
+        <label for="sortStrokesInput"> <input type="checkbox" id="sortStrokesInput"> Arrange by stroke count (on full sheet)</label>
+    </div>
   </fieldset>
 
-  <!-- Attribution Notice Added Here -->
+   <fieldset>
+      <legend>Style Presets</legend>
+      <div class="control-group">
+          <button class="preset-button" onclick="applyPreset('mizige')" title="Classic 'rice grid' with dotted center and dashed diagonals">Mi Zi Ge (米字格)</button>
+          <button class="preset-button" onclick="applyPreset('tianzige')" title="'Field grid' with dotted center lines only">Tian Zi Ge (田字格)</button>
+          <button class="preset-button" onclick="applyPreset('plain')" title="Just a simple box, no guides inside">Plain Box</button>
+      </div>
+      <p class="input-description" style="margin-top: 5px;">Presets adjust style and practice flow settings only.</p>
+   </fieldset>
+
+  <fieldset>
+    <legend>Sheet Layout</legend>
+    <div class="control-group">
+        <label for="boxesPerRow">Boxes per row:</label> <input type="number" id="boxesPerRow" min="1">
+        <label for="minRowsInput" title="Ensure each character's practice group takes up at least this many rows">Min Rows per Character:</label> <input type="number" id="minRowsInput" min="1" max="5">
+    </div>
+     <p class="input-description" style="margin-top: -5px;">Control the grid size on your practice page.</p>
+  </fieldset>
+
+   <fieldset>
+       <legend>Practice Flow</legend>
+       <div class="control-group">
+           <label for="skipStrokeGuide" title="Start directly with hint or empty boxes, skipping the step-by-step guide">
+               <input type="checkbox" id="skipStrokeGuide"> Skip stroke-by-stroke guide
+           </label>
+       </div>
+       <div class="control-group">
+            <label for="numHintGuideBoxes" title="How many boxes with the full character hint to show after the stroke guide (if shown)">Hint Guide Boxes:</label>
+            <input type="number" id="numHintGuideBoxes" min="0" max="20">
+        </div>
+        <p class="input-description">Guided repetition with a faint character.</p>
+       <div class="control-group">
+            <label for="minEmptyBoxes" title="Minimum number of empty boxes for writing from memory">Min Empty Boxes:</label>
+            <input type="number" id="minEmptyBoxes" min="0" max="30">
+       </div>
+       <p class="input-description">Blank boxes for recall practice.</p>
+   </fieldset>
+
+  <fieldset>
+    <legend>Guides</legend>
+    <div class="control-group">
+         <label for="centerGuideLineStyle">Center Style (— |):</label>
+         <select id="centerGuideLineStyle"> <option value="solid">Solid</option> <option value="dashed">Dashed</option> <option value="dotted">Dotted</option> <option value="none">None</option> </select>
+         <div id="centerDashPatternGroup" class="pattern-group hidden">
+             <label for="dashedPatternInput">Dash:</label> <input type="text" class="pattern-input" id="dashedPatternInput" placeholder="e.g., 4, 2">
+         </div>
+          <div id="centerDotPatternGroup" class="pattern-group hidden">
+             <label for="dottedPatternInput">Dot:</label> <input type="text" class="pattern-input" id="dottedPatternInput" placeholder="e.g., 1, 2">
+         </div>
+         <label for="centerGuideColorInput">Center Color:</label> <input type="color" id="centerGuideColorInput">
+    </div>
+     <div class="control-group">
+        <label for="diagGuideLineStyle">Diagonal Style (╲ ╱):</label>
+        <select id="diagGuideLineStyle"> <option value="solid">Solid</option> <option value="dashed">Dashed</option> <option value="dotted">Dotted</option> <option value="none">None</option> </select>
+         <div id="diagDashPatternGroup" class="pattern-group hidden">
+             <label for="diagDashedPatternInput">Dash:</label> <input type="text" class="pattern-input" id="diagDashedPatternInput" placeholder="e.g., 4, 2">
+         </div>
+          <div id="diagDotPatternGroup" class="pattern-group hidden">
+             <label for="diagDottedPatternInput">Dot:</label> <input type="text" class="pattern-input" id="diagDottedPatternInput" placeholder="e.g., 1, 2"> </label>
+         </div>
+         <label for="diagGuideColorInput">Diagonal Color:</label> <input type="color" id="diagGuideColorInput">
+     </div>
+  </fieldset>
+
+  <fieldset>
+      <legend>Colors</legend>
+      <div class="control-group">
+        <label for="strokeColorInput">Stroke Color:</label> <input type="color" id="strokeColorInput">
+        <label for="fadedColorInput" title="Used for previous strokes in guide, and full character hints">
+            Faded Color:
+        </label>
+        <input type="color" id="fadedColorInput">
+       </div>
+       <p class="input-description">"Faded Color" provides the subtle hint for tracing new strokes or the full character.</p>
+  </fieldset>
+
+
+    <fieldset>
+        <legend>Live Preview (First Character)</legend>
+        <div id="livePreviewArea">
+             <span>Loading preview...</span>
+        </div>
+    </fieldset>
+
   <p class="attribution-notice">
-    This practice sheet generator uses the wonderful
-    <a href="https://hanziwriter.org/" target="_blank" rel="noopener noreferrer">Hanzi Writer</a> library.
+    Powered by the amazing <a href="https://hanziwriter.org/" target="_blank" rel="noopener noreferrer">Hanzi Writer</a> library! Your preferences are saved locally.
   </p>
 
   <div class="control-group">
-      <button onclick="generateSheet()">Generate Sheet</button>
+      <button onclick="generateSheet()">Generate Full Sheet</button>
+      <button onclick="window.print();">Print Sheet</button>
  </div>
 </div>
 
 <div id="sheet"></div>
 
 <script>
-  // --- Configuration ---
+  // --- Configuration & Constants ---
+  const STYLE_STORAGE_KEY = 'hanziPracticeStyleSettings_v3';
+  const CHARS_STORAGE_KEY = 'hanziPracticeChars_v1';
+  const PREVIEW_CHAR_DEFAULT = '最';
+  const DEBOUNCE_DELAY = 350;
+  const REF_PAPER_WIDTH = 210;
+
   const CONFIG = {
-    defaultBoxesPerRow: 8,
-    defaultMinPracticeBoxes: 4,
-    defaultMinRows: 2,
-    charScaleFactor: 0.85,
-    printBodyMarginMM: 5,
-    boxGapMM: 2,
-    defaultGuideColor: '#DDDDDD', defaultFadedGuideColor: '#EAEAEA', defaultTracingColor: '#CCCCCC', defaultStrokeColor: '#000000', defaultStrokeGrayColor: '#CCCCCC',
-    defaultGuideLineStyle: 'solid', defaultFadedGuide: false, defaultSortStrokes: true,
+    presets: {
+        mizige: { centerGuideLineStyle: 'dotted', centerGuideColor: '#CCCCCC', diagGuideLineStyle: 'dashed', diagGuideColor: '#CCCCCC', dashedPattern: '4, 2', dottedPattern: '1, 2', diagDashedPattern: '4, 2', diagDottedPattern: '1, 2', skipStrokeGuide: false, numHintGuideBoxes: 2, minEmptyBoxes: 4, fadedColor: '#CCCCCC'},
+        tianzige: { centerGuideLineStyle: 'dotted', centerGuideColor: '#CCCCCC', diagGuideLineStyle: 'none', diagGuideColor: '#CCCCCC', dashedPattern: '4, 2', dottedPattern: '1, 2', diagDashedPattern: '4, 2', diagDottedPattern: '1, 2', skipStrokeGuide: false, numHintGuideBoxes: 2, minEmptyBoxes: 4, fadedColor: '#CCCCCC'},
+        plain: { centerGuideLineStyle: 'none', centerGuideColor: '#DDDDDD', diagGuideLineStyle: 'none', diagGuideColor: '#DDDDDD', dashedPattern: '4, 2', dottedPattern: '1, 2', diagDashedPattern: '4, 2', diagDottedPattern: '1, 2', skipStrokeGuide: true, numHintGuideBoxes: 0, minEmptyBoxes: 6, fadedColor: '#CCCCCC'},
+    },
+    defaults: {
+        hanziInput: '最近忙什么',
+        sortStrokes: false,
+        boxesPerRow: 12,
+        minRows: 2,
+        skipStrokeGuide: false,
+        numHintGuideBoxes: 2,
+        minEmptyBoxes: 4,
+        centerGuideLineStyle: 'dotted',
+        diagGuideLineStyle: 'dashed',
+        centerGuideColor: '#CCCCCC',
+        diagGuideColor: '#CCCCCC',
+        dashedPattern: '4, 2', dottedPattern: '1, 2',
+        diagDashedPattern: '4, 2', diagDottedPattern: '1, 2',
+        strokeColor: '#000000',
+        fadedColor: '#CCCCCC',
+    },
+    charScaleFactor: 0.85, printBodyMarginMM: 5, boxGapMM: 2,
   };
 
-  // --- Helper Functions ---
-  function calculateBoxSize(boxesPerRow) { const a4WidthMM = 210; const usableWidth = a4WidthMM - (2 * CONFIG.printBodyMarginMM); const totalGapWidth = CONFIG.boxGapMM * (boxesPerRow - 1); const safeBoxesPerRow = Math.max(1, boxesPerRow); const boxSize = (usableWidth - totalGapWidth) / safeBoxesPerRow; return boxSize; }
+  // --- Global State ---
+  let previewCharDataCache = {}; let previewDebounceTimer; let previewChar = PREVIEW_CHAR_DEFAULT;
 
-  function createGuideSVG(guideStyleClass, color) {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("class", `guide-svg ${guideStyleClass}`); svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("preserveAspectRatio", "none");
-    const lines = [ { coords: [0, 50, 100, 50], class: 'guide-h' }, { coords: [50, 0, 50, 100], class: 'guide-v' }, { coords: [0, 0, 100, 100], class: 'guide-d1' }, { coords: [100, 0, 0, 100], class: 'guide-d2' } ];
-    lines.forEach(lineInfo => { const line = document.createElementNS("http://www.w3.org/2000/svg", "line"); line.setAttribute("class", lineInfo.class); line.setAttribute("x1", lineInfo.coords[0]); line.setAttribute("y1", lineInfo.coords[1]); line.setAttribute("x2", lineInfo.coords[2]); line.setAttribute("y2", lineInfo.coords[3]); line.setAttribute("stroke", color); line.setAttribute("fill", "none"); /* The Fix */ svg.appendChild(line); });
+  // --- Helper Functions ---
+  function calculateBoxSize(boxesPerRow) { const safeBoxesPerRow = Math.max(1, boxesPerRow); const usableWidth = REF_PAPER_WIDTH - (2 * CONFIG.printBodyMarginMM); const totalGapWidth = CONFIG.boxGapMM * (safeBoxesPerRow - 1); const boxSize = Math.max(1, (usableWidth - totalGapWidth) / safeBoxesPerRow); return boxSize; }
+  function isValidDashPattern(patternString) { if (!patternString || typeof patternString !== 'string') return false; return /^\s*\d+(\.\d+)?\s*,\s*\d+(\.\d+)?\s*$/.test(patternString.trim()); }
+
+  function createGuideSVG(settings) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("class", `guide-svg`); svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("preserveAspectRatio", "none");
+    const lines = [ { coords: [0, 50, 100, 50], type: 'center' }, { coords: [50, 0, 50, 100], type: 'center' }, { coords: [0, 0, 100, 100], type: 'diagonal' }, { coords: [100, 0, 0, 100], type: 'diagonal' } ];
+    const effCenterDashed = isValidDashPattern(settings.dashedPattern) ? settings.dashedPattern.trim() : CONFIG.defaults.dashedPattern; const effCenterDotted = isValidDashPattern(settings.dottedPattern) ? settings.dottedPattern.trim() : CONFIG.defaults.dottedPattern; const effDiagDashed = isValidDashPattern(settings.diagDashedPattern) ? settings.diagDashedPattern.trim() : effCenterDashed; const effDiagDotted = isValidDashPattern(settings.diagDottedPattern) ? settings.diagDottedPattern.trim() : effCenterDotted;
+    lines.forEach(lineInfo => { const isDiagonal = lineInfo.type === 'diagonal'; const currentStyle = isDiagonal ? settings.diagGuideLineStyle : settings.centerGuideLineStyle; const currentColor = isDiagonal ? settings.diagGuideColor : settings.centerGuideColor; if (currentStyle === 'none') return; const line = document.createElementNS("http://www.w3.org/2000/svg", "line"); line.setAttribute("x1", lineInfo.coords[0]); line.setAttribute("y1", lineInfo.coords[1]); line.setAttribute("x2", lineInfo.coords[2]); line.setAttribute("y2", lineInfo.coords[3]); line.setAttribute("stroke", currentColor); line.setAttribute("fill", "none"); let dashArray = 'none'; if (currentStyle === 'dashed') { dashArray = isDiagonal ? effDiagDashed : effCenterDashed; } else if (currentStyle === 'dotted') { dashArray = isDiagonal ? effDiagDotted : effCenterDotted; } line.setAttribute("stroke-dasharray", dashArray); svg.appendChild(line); }); return svg;
+   }
+
+  function createHanziBox(size, settings) { const box = document.createElement('div'); box.className = 'hanzi-box'; box.style.width = size.toFixed(2) + 'mm'; box.style.height = size.toFixed(2) + 'mm'; const guideSvg = createGuideSVG(settings); box.appendChild(guideSvg); return box; }
+
+  /** Renders SVG strokes, applying colors based on mode */
+  function renderCharacterSVG(data, strokeIndex, mainStrokeColor, fadedHintColor) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 1024 1024"); svg.setAttribute("class", "hanzi-svg"); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); const scale = CONFIG.charScaleFactor; const transform = `translate(50, 900) scale(${scale}, -${scale})`; group.setAttribute("transform", transform); svg.appendChild(group);
+    const numStrokes = data.strokes.length;
+    const isHintRender = strokeIndex === -1;
+
+    for (let i = 0; i < numStrokes; i++) {
+        if (!data.strokes[i]) continue;
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", data.strokes[i]);
+        let fillColor;
+
+        if (isHintRender) {
+            fillColor = fadedHintColor; // Full hint render uses faded color
+        } else { // Stroke-by-stroke render
+            if (i < strokeIndex) fillColor = mainStrokeColor; // Previous strokes = main color
+            else if (i === strokeIndex) fillColor = fadedHintColor; // Current stroke = faded color
+            else fillColor = 'none'; // Future strokes = hidden
+        }
+        path.setAttribute("fill", fillColor);
+        group.appendChild(path);
+    }
     return svg;
   }
 
-  function createHanziBox(size, guideStyleClass, guideColor) { const box = document.createElement('div'); box.className = 'hanzi-box'; box.style.width = size.toFixed(2) + 'mm'; box.style.height = size.toFixed(2) + 'mm'; const guideSvg = createGuideSVG(guideStyleClass, guideColor); box.appendChild(guideSvg); return box; }
+  // --- Settings Persistence ---
+  function getSettingsFromDOM(includeChars = true) {
+      const defaults = CONFIG.defaults;
+      const settings = {
+          sortStrokes: document.getElementById('sortStrokesInput')?.checked ?? defaults.sortStrokes,
+          boxesPerRow: parseInt(document.getElementById('boxesPerRow')?.value) || defaults.boxesPerRow,
+          minRows: parseInt(document.getElementById('minRowsInput')?.value) || defaults.minRows,
+          skipStrokeGuide: document.getElementById('skipStrokeGuide')?.checked ?? defaults.skipStrokeGuide,
+          numHintGuideBoxes: parseInt(document.getElementById('numHintGuideBoxes')?.value) || defaults.numHintGuideBoxes,
+          minEmptyBoxes: parseInt(document.getElementById('minEmptyBoxes')?.value) || defaults.minEmptyBoxes,
+          centerGuideLineStyle: document.getElementById('centerGuideLineStyle')?.value ?? defaults.centerGuideLineStyle,
+          diagGuideLineStyle: document.getElementById('diagGuideLineStyle')?.value ?? defaults.diagGuideLineStyle,
+          centerGuideColor: document.getElementById('centerGuideColorInput')?.value ?? defaults.centerGuideColor,
+          diagGuideColor: document.getElementById('diagGuideColorInput')?.value ?? defaults.diagGuideColor,
+          dashedPattern: document.getElementById('dashedPatternInput')?.value ?? defaults.dashedPattern,
+          dottedPattern: document.getElementById('dottedPatternInput')?.value ?? defaults.dottedPattern,
+          diagDashedPattern: document.getElementById('diagDashedPatternInput')?.value ?? defaults.diagDashedPattern,
+          diagDottedPattern: document.getElementById('diagDottedPatternInput')?.value ?? defaults.diagDottedPattern,
+          strokeColor: document.getElementById('strokeColorInput')?.value ?? defaults.strokeColor,
+          fadedColor: document.getElementById('fadedColorInput')?.value ?? defaults.fadedColor, // Updated key name
+      };
+      if (includeChars) { settings.hanziInput = document.getElementById('hanziInput')?.value ?? defaults.hanziInput; }
+      return settings;
+  }
+  function saveSettings() {
+      const styleSettings = getSettingsFromDOM(false); try { localStorage.setItem(STYLE_STORAGE_KEY, JSON.stringify(styleSettings)); } catch (e) { console.error("Failed to save style settings:", e); }
+      try { const hanziValue = document.getElementById('hanziInput')?.value ?? ''; localStorage.setItem(CHARS_STORAGE_KEY, hanziValue); } catch (e) { console.error("Failed to save characters:", e); }
+      console.log("Settings saved (styles & chars separately).");
+   }
+  function loadSettings() {
+      let loadedStyleSettings = {}; try { const saved = localStorage.getItem(STYLE_STORAGE_KEY); if (saved) { loadedStyleSettings = JSON.parse(saved); } } catch (e) { console.error("Failed to load style settings:", e); localStorage.removeItem(STYLE_STORAGE_KEY); }
+      let loadedChars = null; try { loadedChars = localStorage.getItem(CHARS_STORAGE_KEY); } catch (e) { console.error("Failed to load characters:", e); localStorage.removeItem(CHARS_STORAGE_KEY); }
+      const defaults = CONFIG.defaults; const applySetting = (id, value) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = value; else el.value = value; }};
+      applySetting('hanziInput', loadedChars ?? defaults.hanziInput);
+      applySetting('sortStrokesInput', loadedStyleSettings.sortStrokes ?? defaults.sortStrokes);
+      applySetting('boxesPerRow', loadedStyleSettings.boxesPerRow ?? defaults.boxesPerRow);
+      applySetting('minRowsInput', loadedStyleSettings.minRows ?? defaults.minRows);
+      applySetting('skipStrokeGuide', loadedStyleSettings.skipStrokeGuide ?? defaults.skipStrokeGuide);
+      applySetting('numHintGuideBoxes', loadedStyleSettings.numHintGuideBoxes ?? defaults.numHintGuideBoxes);
+      applySetting('minEmptyBoxes', loadedStyleSettings.minEmptyBoxes ?? defaults.minEmptyBoxes);
+      applySetting('centerGuideLineStyle', loadedStyleSettings.centerGuideLineStyle ?? defaults.centerGuideLineStyle);
+      applySetting('diagGuideLineStyle', loadedStyleSettings.diagGuideLineStyle ?? defaults.diagGuideLineStyle);
+      applySetting('centerGuideColorInput', loadedStyleSettings.centerGuideColor ?? defaults.centerGuideColor);
+      applySetting('diagGuideColorInput', loadedStyleSettings.diagGuideColor ?? defaults.diagGuideColor);
+      applySetting('dashedPatternInput', loadedStyleSettings.dashedPattern ?? defaults.dashedPattern);
+      applySetting('dottedPatternInput', loadedStyleSettings.dottedPattern ?? defaults.dottedPattern);
+      applySetting('diagDashedPatternInput', loadedStyleSettings.diagDashedPattern ?? (loadedStyleSettings.dashedPattern ?? defaults.dashedPattern));
+      applySetting('diagDottedPatternInput', loadedStyleSettings.diagDottedPattern ?? (loadedStyleSettings.dottedPattern ?? defaults.dottedPattern));
+      applySetting('strokeColorInput', loadedStyleSettings.strokeColor ?? defaults.strokeColor);
+      applySetting('fadedColorInput', loadedStyleSettings.fadedColor ?? defaults.fadedColor); // Updated key name
+      console.log("Settings loaded."); updatePatternInputVisibility('center'); updatePatternInputVisibility('diag');
+  }
 
-  function renderCharacterSVG(data, strokeIndex, mainColor, prevColor = mainColor) { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 1024 1024"); svg.setAttribute("class", "hanzi-svg"); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); const scale = CONFIG.charScaleFactor; const transform = `translate(50, 900) scale(${scale}, -${scale})`; group.setAttribute("transform", transform); svg.appendChild(group); const numStrokes = data.strokes.length; for (let i = 0; i < numStrokes; i++) { if (!data.strokes[i]) continue; const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", data.strokes[i]); let fillColor = mainColor; if (strokeIndex >= 0 && strokeIndex < numStrokes) { if (i < strokeIndex) fillColor = prevColor; else if (i > strokeIndex) fillColor = 'none'; } path.setAttribute("fill", fillColor); group.appendChild(path); } return svg; }
+  // --- UI Update Helpers ---
+  function updatePatternInputVisibility(type) { const styleSelectId = type + 'GuideLineStyle'; const dashGroupId = type + 'DashPatternGroup'; const dotGroupId = type + 'DotPatternGroup'; const styleSelect = document.getElementById(styleSelectId); const dashGroup = document.getElementById(dashGroupId); const dotGroup = document.getElementById(dotGroupId); if (!styleSelect || !dashGroup || !dotGroup) return; const selectedStyle = styleSelect.value; dashGroup.classList.toggle('hidden', selectedStyle !== 'dashed'); dotGroup.classList.toggle('hidden', selectedStyle !== 'dotted'); }
+
+  // --- Live Preview ---
+  async function updateLivePreview() {
+    const previewArea = document.getElementById('livePreviewArea'); previewArea.innerHTML = `<span>Updating...</span>`; const currentSettings = getSettingsFromDOM(); const firstChar = (currentSettings.hanziInput.match(/[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/) || [PREVIEW_CHAR_DEFAULT])[0]; let charData = previewCharDataCache[firstChar]; if (!charData || previewChar !== firstChar) { previewChar = firstChar; try { charData = await HanziWriter.loadCharacterData(firstChar); previewCharDataCache = { [firstChar]: charData }; } catch (e) { previewArea.innerHTML = `<span>Error loading '${firstChar}'</span>`; console.error("Preview load error:", e); return; } } if (!charData || !charData.strokes || charData.strokes.length === 0) { previewArea.innerHTML = `<span>No data for '${firstChar}'</span>`; return; } previewArea.innerHTML = ''; const previewBoxSize = { toFixed: () => 18..toFixed(2) }; const showStrokeGuide = !currentSettings.skipStrokeGuide; const showHintGuide = currentSettings.numHintGuideBoxes > 0;
+
+    // Box 1: Last Stroke OR First Hint OR Empty
+    if (showStrokeGuide) {
+        const box1 = createHanziBox(previewBoxSize, currentSettings);
+        // Render last stroke: new stroke (index=N-1) is FADED, previous (index<N-1) are MAIN
+        const lastStrokeSVG = renderCharacterSVG(charData, charData.strokes.length - 1, currentSettings.strokeColor, currentSettings.fadedColor);
+        box1.appendChild(lastStrokeSVG);
+        previewArea.appendChild(createPreviewItem(box1, "Stroke Guide (Trace Faded)")); // Updated Label
+    }
+
+    // Box 2: Hint Guide (if shown) OR Empty (if hint=0 and stroke guide skipped)
+    if (showHintGuide) {
+         if (showStrokeGuide) previewArea.appendChild(createArrowSpan()); // Arrow only if box 1 existed
+         const box2 = createHanziBox(previewBoxSize, currentSettings);
+         // Render hint: index=-1, main=null, hint=fadedColor
+         const hintSVG = renderCharacterSVG(charData, -1, null, currentSettings.fadedColor);
+         box2.appendChild(hintSVG);
+         previewArea.appendChild(createPreviewItem(box2, "Hint Guide"));
+    }
+
+    // Box 3: Empty Practice (Always shown last, unless it's the only step)
+     if (showStrokeGuide || showHintGuide) { // Add arrow if not the only step
+        previewArea.appendChild(createArrowSpan());
+        const box3 = createHanziBox(previewBoxSize, currentSettings);
+        previewArea.appendChild(createPreviewItem(box3, "Empty Practice"));
+     } else { // Only step is empty box
+         const box1 = createHanziBox(previewBoxSize, currentSettings);
+         previewArea.appendChild(createPreviewItem(box1, "Empty Practice"));
+     }
+  }
+  function createPreviewItem(boxElement, labelText) { const item = document.createElement('div'); item.className = 'preview-item'; item.appendChild(boxElement); item.appendChild(createPreviewLabel(labelText)); return item; }
+  function createPreviewLabel(text) { const label = document.createElement('span'); label.className = 'preview-label'; label.textContent = text; return label; }
+  function createArrowSpan() { const arrow = document.createElement('span'); arrow.className = 'arrow'; arrow.innerHTML = '→'; return arrow;}
+  function debouncedUpdatePreview() { clearTimeout(previewDebounceTimer); previewDebounceTimer = setTimeout(updateLivePreview, DEBOUNCE_DELAY); }
+
+  // --- Presets ---
+  function applyPreset(presetName) { // Presets only apply style/flow now
+      const preset = CONFIG.presets[presetName]; if (!preset) { console.error(`Preset "${presetName}" not found.`); return; }
+      console.log(`Applying preset: ${presetName}`); const defaults = CONFIG.defaults;
+      Object.keys(preset).forEach(key => { // Only iterate preset keys
+          const value = preset[key] ?? defaults[key]; const inputKey = key;
+          const element = document.getElementById(inputKey + 'Input') ?? document.getElementById(inputKey);
+          if (element) { if (element.type === 'checkbox') { element.checked = value; } else { element.value = value ?? ''; } element.dispatchEvent(new Event('change', { bubbles: true })); element.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+      updatePatternInputVisibility('center'); updatePatternInputVisibility('diag');
+      generateSheet(); // Regenerate
+  }
+
 
   // --- Sheet Generation State & Logic ---
-  let currentCharacterContainer = null; let currentRow = null; let boxesInCurrentRow = 0; let currentBoxesPerRow = CONFIG.defaultBoxesPerRow;
+  let currentCharacterContainer = null; let currentRow = null; let boxesInCurrentRow = 0;
   function startNewCharacterGroup(containerElement) { currentCharacterContainer = containerElement; currentRow = null; boxesInCurrentRow = 0; }
   function addBoxToCurrentCharacterGroup(box) { if (!currentCharacterContainer) { console.error("Internal Error: Trying to add box before starting a character group."); return; } if (currentRow === null || boxesInCurrentRow >= currentBoxesPerRow) { currentRow = document.createElement('div'); currentRow.className = 'character-row'; currentCharacterContainer.appendChild(currentRow); boxesInCurrentRow = 0; } currentRow.appendChild(box); boxesInCurrentRow++; }
 
   /** Main function */
-  async function generateSheet() {
-    // --- Get User Inputs ---
-    const hanziInput = document.getElementById('hanziInput').value; const boxesPerRow = parseInt(document.getElementById('boxesPerRow').value) || CONFIG.defaultBoxesPerRow; currentBoxesPerRow = boxesPerRow; const minPracticeBoxesInput = parseInt(document.getElementById('minPracticeBoxesInput').value); const effectiveMinPracticeBoxes = (isNaN(minPracticeBoxesInput) || minPracticeBoxesInput < 0) ? CONFIG.defaultMinPracticeBoxes : minPracticeBoxesInput; const minRowsInput = parseInt(document.getElementById('minRowsInput').value); const effectiveMinRows = (isNaN(minRowsInput) || minRowsInput < 1) ? CONFIG.defaultMinRows : minRowsInput; const guideLineStyle = document.getElementById('guideLineStyle').value || CONFIG.defaultGuideLineStyle; const shouldSort = document.getElementById('sortStrokesInput').checked; const fadedGuide = document.getElementById('fadedGuideInput').checked; const guideColor = document.getElementById('guideColorInput').value; const fadedColor = document.getElementById('fadedColorInput').value; const strokeColor = document.getElementById('strokeColorInput').value; const strokeGrayColor = document.getElementById('strokeGrayColorInput').value; const tracingColor = document.getElementById('tracingColorInput').value;
-    // --- Prepare Sheet ---
-    const boxSize = calculateBoxSize(boxesPerRow); const sheetContainer = document.getElementById('sheet'); sheetContainer.innerHTML = `<p class="loading-message">Loading character data...</p>`; const guideStyleClass = `guide-style-${guideLineStyle}`;
-    // --- Character Processing & Loading ---
-    const uniqueChars = Array.from(new Set(hanziInput.match(/[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/g) || [])); const characterLoadResults = { success: [], errors: [] }; if (uniqueChars.length === 0) { sheetContainer.innerHTML = '<p class="error-message">No valid Hanzi characters entered.</p>'; return; } try { const promises = uniqueChars.map(char => HanziWriter.loadCharacterData(char).then(data => ({ status: 'success', char, data })).catch(error => ({ status: 'error', char, reason: error }))); const settledResults = await Promise.all(promises); settledResults.forEach(outcome => { if (outcome.status === 'success' && outcome.data?.strokes?.length > 0) { characterLoadResults.success.push({ char: outcome.char, data: outcome.data, strokeCount: outcome.data.strokes.length }); } else if (outcome.status === 'error') { characterLoadResults.errors.push({ char: outcome.char, reason: outcome.reason }); console.error(`Failed to load data for character: ${outcome.char}`, outcome.reason); } else { const charWithError = outcome.char || 'unknown'; const reason = 'Invalid data structure or empty strokes'; characterLoadResults.errors.push({ char: charWithError, reason }); console.warn(`Data loaded for ${charWithError} but seems invalid or empty.`); }}); } catch (error) { console.error("Error during character data loading phase:", error); sheetContainer.innerHTML = '<p class="error-message">An unexpected error occurred while loading character data. See console.</p>'; return; }
-    let charactersToProcess = characterLoadResults.success; if (shouldSort) { charactersToProcess.sort((a, b) => a.strokeCount - b.strokeCount); } else { charactersToProcess.sort((a, b) => uniqueChars.indexOf(a.char) - uniqueChars.indexOf(b.char)); } sheetContainer.innerHTML = ''; if (charactersToProcess.length === 0) { sheetContainer.innerHTML = '<p class="error-message">Could not load data for any valid Hanzi characters.</p>'; }
-    // --- Render Sheet ---
-    charactersToProcess.forEach(charInfo => {
-        const { char, data, strokeCount } = charInfo;
-        const charContainer = document.createElement('div'); charContainer.className = 'character-container'; sheetContainer.appendChild(charContainer);
-        const titleDiv = document.createElement('div'); titleDiv.className = 'character-title'; titleDiv.textContent = `Character: ${char} (${strokeCount} strokes)`; charContainer.appendChild(titleDiv);
-        startNewCharacterGroup(charContainer); let totalBoxesForChar = 0;
-        const createAndAddBox = (contentRenderer = null) => { const box = createHanziBox(boxSize, guideStyleClass, guideColor); if (contentRenderer) { contentRenderer(box, data); } addBoxToCurrentCharacterGroup(box); totalBoxesForChar++; };
-        const renderEmptyOrFadedBox = (box, data) => { if (fadedGuide) { const charSvg = renderCharacterSVG(data, -1, fadedColor); box.appendChild(charSvg); }};
-        // Box Generation Sequence
-        for (let i = 0; i < strokeCount; i++) { createAndAddBox((box, data) => { const charSvg = renderCharacterSVG(data, i, strokeColor, strokeGrayColor); box.appendChild(charSvg); }); }
-        for (let i = 0; i < 2; i++) { createAndAddBox((box, data) => { const charSvg = renderCharacterSVG(data, -1, tracingColor); box.appendChild(charSvg); }); }
-        for (let i = 0; i < effectiveMinPracticeBoxes; i++) { createAndAddBox(renderEmptyOrFadedBox); }
-        const currentOccupiedRows = Math.max(1, Math.ceil(totalBoxesForChar / boxesPerRow)); const targetRowCount = Math.max(currentOccupiedRows, effectiveMinRows); const targetTotalBoxes = targetRowCount * boxesPerRow; const boxesToAddForRows = Math.max(0, targetTotalBoxes - totalBoxesForChar); for (let i = 0; i < boxesToAddForRows; i++) { createAndAddBox(renderEmptyOrFadedBox); }
-        const finalRemainder = totalBoxesForChar % boxesPerRow; if (finalRemainder !== 0) { const boxesToFillLastRow = boxesPerRow - finalRemainder; for (let i = 0; i < boxesToFillLastRow; i++) { createAndAddBox(renderEmptyOrFadedBox); }}
-    }); // End of character loop
-    // --- Final Error Reporting ---
-     if (characterLoadResults.errors.length > 0) { const errorDiv = document.createElement('div'); errorDiv.className = 'error-message'; const errorList = characterLoadResults.errors.map(err => `${err.char} (${err.reason?.message || err.reason || 'Unknown error'})`).join(', '); errorDiv.textContent = `Could not load or process data for: ${errorList}`; sheetContainer.appendChild(errorDiv); }
-  } // End generateSheet
+  async function generateSheet() { /* ... Uses updated renderCharacterSVG calls ... */
+    const settings = getSettingsFromDOM(); currentBoxesPerRow = settings.boxesPerRow;
+    const boxSize = calculateBoxSize(settings.boxesPerRow); const sheetContainer = document.getElementById('sheet'); sheetContainer.innerHTML = `<p class="loading-message">Loading character data...</p>`;
+    const uniqueChars = Array.from(new Set(settings.hanziInput.match(/[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/g) || [])); const characterLoadResults = { success: [], errors: [] }; if (uniqueChars.length === 0) { sheetContainer.innerHTML = '<p class="error-message">No valid Hanzi characters entered.</p>'; saveSettings(); return; }
+    try { const promises = uniqueChars.map(char => HanziWriter.loadCharacterData(char).then(data => ({ status: 'success', char, data })).catch(error => ({ status: 'error', char, reason: error }))); const settledResults = await Promise.all(promises); settledResults.forEach(outcome => { if (outcome.status === 'success' && outcome.data?.strokes?.length > 0) { characterLoadResults.success.push({ char: outcome.char, data: outcome.data, strokeCount: outcome.data.strokes.length }); } else if (outcome.status === 'error') { characterLoadResults.errors.push({ char: outcome.char, reason: outcome.reason }); console.error(`Failed to load data for character: ${outcome.char}`, outcome.reason); } else { const charWithError = outcome.char || 'unknown'; const reason = 'Invalid data structure or empty strokes'; characterLoadResults.errors.push({ char: charWithError, reason }); console.warn(`Data loaded for ${charWithError} but seems invalid or empty.`); }}); } catch (error) { console.error("Error during character data loading phase:", error); sheetContainer.innerHTML = '<p class="error-message">An unexpected error occurred while loading character data. See console.</p>'; saveSettings(); return; }
+    let charactersToProcess = characterLoadResults.success; if (settings.sortStrokes) { charactersToProcess.sort((a, b) => a.strokeCount - b.strokeCount); } else { charactersToProcess.sort((a, b) => uniqueChars.indexOf(a.char) - uniqueChars.indexOf(b.char)); }
+    sheetContainer.innerHTML = ''; if (charactersToProcess.length === 0) { sheetContainer.innerHTML = '<p class="error-message">Could not load data for any valid Hanzi characters.</p>'; }
+    charactersToProcess.forEach(charInfo => { const { char, data, strokeCount } = charInfo; const charContainer = document.createElement('div'); charContainer.className = 'character-container'; sheetContainer.appendChild(charContainer); const titleDiv = document.createElement('div'); titleDiv.className = 'character-title'; titleDiv.textContent = `Character: ${char} (${strokeCount} strokes)`; charContainer.appendChild(titleDiv); startNewCharacterGroup(charContainer); let totalBoxesForChar = 0; const createAndAddBox = (contentRenderer = null) => { const box = createHanziBox(boxSize, settings); if (contentRenderer) { contentRenderer(box, data); } addBoxToCurrentCharacterGroup(box); totalBoxesForChar++; }; const createAndAddEmptyBox = () => { createAndAddBox(null); };
+        // UPDATED Box Generation Sequence
+        if (!settings.skipStrokeGuide) { for (let i = 0; i < strokeCount; i++) { createAndAddBox((box, data) => { const charSvg = renderCharacterSVG(data, i, settings.strokeColor, settings.fadedColor); box.appendChild(charSvg); }); } }
+        for (let i = 0; i < settings.numHintGuideBoxes; i++) { createAndAddBox((box, data) => { const charSvg = renderCharacterSVG(data, -1, null, settings.fadedColor); box.appendChild(charSvg); }); }
+        for (let i = 0; i < settings.minEmptyBoxes; i++) { createAndAddEmptyBox(); }
+        const currentOccupiedRows = Math.max(1, Math.ceil(totalBoxesForChar / settings.boxesPerRow)); const targetRowCount = Math.max(currentOccupiedRows, settings.minRows); const targetTotalBoxes = targetRowCount * settings.boxesPerRow; const boxesToAddForRows = Math.max(0, targetTotalBoxes - totalBoxesForChar); for (let i = 0; i < boxesToAddForRows; i++) { createAndAddEmptyBox(); }
+        const finalRemainder = totalBoxesForChar % settings.boxesPerRow; if (finalRemainder !== 0) { const boxesToFillLastRow = settings.boxesPerRow - finalRemainder; for (let i = 0; i < boxesToFillLastRow; i++) { createAndAddEmptyBox(); }}
+    });
+    if (characterLoadResults.errors.length > 0) { const errorDiv = document.createElement('div'); errorDiv.className = 'error-message'; const errorList = characterLoadResults.errors.map(err => `${err.char} (${err.reason?.message || err.reason || 'Unknown error'})`).join(', '); errorDiv.textContent = `Could not load or process data for: ${errorList}`; sheetContainer.appendChild(errorDiv); }
+    saveSettings();
+  }
 
   // --- Initialization ---
   window.onload = () => {
-      document.getElementById('boxesPerRow').value = CONFIG.defaultBoxesPerRow; document.getElementById('minPracticeBoxesInput').value = CONFIG.defaultMinPracticeBoxes; document.getElementById('minRowsInput').value = CONFIG.defaultMinRows; document.getElementById('guideLineStyle').value = CONFIG.defaultGuideLineStyle; document.getElementById('fadedGuideInput').checked = CONFIG.defaultFadedGuide; document.getElementById('sortStrokesInput').checked = CONFIG.defaultSortStrokes;
-      document.getElementById('guideColorInput').value = CONFIG.defaultGuideColor; document.getElementById('fadedColorInput').value = CONFIG.defaultFadedGuideColor; document.getElementById('strokeColorInput').value = CONFIG.defaultStrokeColor; document.getElementById('strokeGrayColorInput').value = CONFIG.defaultStrokeGrayColor; document.getElementById('tracingColorInput').value = CONFIG.defaultTracingColor;
-      generateSheet();
+      loadSettings(); // Load saved settings or apply defaults first
+      const controlsToListen = document.querySelectorAll('.controls input, .controls select');
+      controlsToListen.forEach(control => { const eventType = (control.type === 'text' || control.type === 'number') ? 'input' : 'change'; const handler = (control.id === 'hanziInput') ? debouncedUpdatePreview : updateLivePreview; control.addEventListener(eventType, handler); });
+      document.getElementById('centerGuideLineStyle').addEventListener('change', () => updatePatternInputVisibility('center')); document.getElementById('diagGuideLineStyle').addEventListener('change', () => updatePatternInputVisibility('diag'));
+      updatePatternInputVisibility('center'); updatePatternInputVisibility('diag');
+      updateLivePreview(); generateSheet();
   };
 </script>
 
