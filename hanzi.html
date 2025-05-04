@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hanzi Practice Sheet</title>
+  <script src="https://unpkg.com/hanzi-writer@3.3.0/dist/hanzi-writer.min.js"></script>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0; /* Control margins via body */
+    }
+
+    body {
+      margin: 10mm; /* Margins for screen view */
+      font-family: sans-serif;
+    }
+
+    /* --- Controls --- */
+    .controls fieldset { border: 1px solid #ccc; padding: 10px 15px 15px 15px; margin-bottom: 10px; }
+    .controls legend { font-weight: bold; padding: 0 5px; }
+    .controls { margin-bottom: 1.5em; display: flex; flex-direction: column; gap: 10px; }
+    .control-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 10px; }
+    .control-group:last-child { margin-bottom: 0; }
+    .controls label { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+    .controls input[type="text"] { width: 300px; }
+    .controls input[type="number"] { width: 60px; }
+    .controls input[type="color"] { width: 40px; height: 25px; padding: 1px 2px; border: 1px solid #ccc; cursor: pointer; vertical-align: middle; }
+    .controls select, .controls button { padding: 5px 8px; }
+    .controls button { font-weight: bold; }
+
+    /* Added Style for Attribution */
+    .attribution-notice {
+        font-size: 0.85em;
+        color: #555;
+        margin: 5px 0 15px 5px; /* Top/Bottom/Left margin */
+        padding: 0;
+        text-align: left;
+        line-height: 1.3;
+    }
+    .attribution-notice a {
+        color: #007bff;
+        text-decoration: none;
+    }
+     .attribution-notice a:hover {
+        text-decoration: underline;
+    }
+
+
+    /* --- Print Specific --- */
+    @media print {
+      .controls { display: none; } /* This hides the notice too */
+      body { margin: 5mm; }
+      .character-container { margin-bottom: 5mm; }
+      .character-row { margin-bottom: 1.5mm; }
+      .character-title { margin-bottom: 3mm; font-size: 12px; }
+    } /* End @media print */
+
+    /* --- Sheet Layout --- */
+    .character-container { margin-bottom: 8mm; page-break-inside: avoid; }
+    .character-row { display: flex; flex-wrap: nowrap; margin-bottom: 3mm; justify-content: flex-start; align-items: flex-start; }
+    .character-container .character-row:last-child { margin-bottom: 0; }
+    .hanzi-box { border: 1px solid black; box-sizing: border-box; display: inline-block; margin-right: 2mm; position: relative; line-height: 0; overflow: hidden; }
+    .hanzi-box:last-child { margin-right: 0; }
+
+
+    /* --- SVG Layers --- */
+    .guide-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    .guide-svg line { stroke-width: 1; vector-effect: non-scaling-stroke; /* fill: none; set in JS */ }
+    .guide-svg.guide-style-dashed line { stroke-dasharray: 4, 2; }
+    .guide-svg.guide-style-dotted line { stroke-dasharray: 1, 2; }
+    .guide-svg.guide-style-solid line { stroke-dasharray: none; }
+    .guide-svg.guide-style-none line { stroke: none !important; }
+    .hanzi-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: block; }
+
+    /* --- Title Styling --- */
+    .character-title { font-size: 14px; margin-bottom: 4mm; font-weight: bold; padding-left: 1mm; text-align: left; }
+
+    /* --- Error Message --- */
+    .error-message { color: red; padding: 5px 0 5px 1mm; font-size: 12px; margin-top: 10mm; page-break-before: avoid; }
+    .loading-message { padding: 10mm; font-style: italic; text-align: center; }
+
+  </style>
+</head>
+<body>
+
+<!-- Controls HTML -->
+<div class="controls">
+  <fieldset>
+    <legend>Content & Sorting</legend>
+    <div class="control-group"> <label>Enter Hanzi: <input type="text" id="hanziInput" value="爱八不北京书学汉语X"> </label> </div>
+    <div class="control-group"> <label> <input type="checkbox" id="sortStrokesInput" checked> Sort by stroke count (ascending) </label> </div>
+  </fieldset>
+  <fieldset>
+    <legend>Layout & Practice</legend>
+    <div class="control-group"> <label>Boxes per row: <input type="number" id="boxesPerRow" value="8" min="4" max="12"> </label> <label>Min Practice Boxes: <input type="number" id="minPracticeBoxesInput" value="4" min="0" max="20"> </label> <label>Min Rows: <input type="number" id="minRowsInput" value="2" min="1" max="5"> </label> </div>
+  </fieldset>
+  <fieldset>
+    <legend>Appearance</legend>
+    <div class="control-group"> <label>Guide Style: <select id="guideLineStyle"> <option value="solid" selected>Solid</option> <option value="dashed">Dashed</option> <option value="dotted">Dotted</option> <option value="none">None</option> </select> </label> <label>Guide Color: <input type="color" id="guideColorInput"> </label> <label> <input type="checkbox" id="fadedGuideInput"> Faded guide in practice boxes </label> <label>Faded Color: <input type="color" id="fadedColorInput"> </label> </div>
+    <div class="control-group"> <label>Stroke Color: <input type="color" id="strokeColorInput"> </label> <label>Prev. Stroke Color: <input type="color" id="strokeGrayColorInput"> </label> <label>Tracing Color: <input type="color" id="tracingColorInput"> </label> </div>
+  </fieldset>
+
+  <!-- Attribution Notice Added Here -->
+  <p class="attribution-notice">
+    This practice sheet generator uses the wonderful
+    <a href="https://hanziwriter.org/" target="_blank" rel="noopener noreferrer">Hanzi Writer</a> library.
+  </p>
+
+  <div class="control-group">
+      <button onclick="generateSheet()">Generate Sheet</button>
+ </div>
+</div>
+
+<div id="sheet"></div>
+
+<script>
+  // --- Configuration ---
+  const CONFIG = {
+    defaultBoxesPerRow: 8,
+    defaultMinPracticeBoxes: 4,
+    defaultMinRows: 2,
+    charScaleFactor: 0.85,
+    printBodyMarginMM: 5,
+    boxGapMM: 2,
+    defaultGuideColor: '#DDDDDD', defaultFadedGuideColor: '#EAEAEA', defaultTracingColor: '#CCCCCC', defaultStrokeColor: '#000000', defaultStrokeGrayColor: '#CCCCCC',
+    defaultGuideLineStyle: 'solid', defaultFadedGuide: false, defaultSortStrokes: true,
+  };
+
+  // --- Helper Functions ---
+  function calculateBoxSize(boxesPerRow) { const a4WidthMM = 210; const usableWidth = a4WidthMM - (2 * CONFIG.printBodyMarginMM); const totalGapWidth = CONFIG.boxGapMM * (boxesPerRow - 1); const safeBoxesPerRow = Math.max(1, boxesPerRow); const boxSize = (usableWidth - totalGapWidth) / safeBoxesPerRow; return boxSize; }
+
+  function createGuideSVG(guideStyleClass, color) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("class", `guide-svg ${guideStyleClass}`); svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("preserveAspectRatio", "none");
+    const lines = [ { coords: [0, 50, 100, 50], class: 'guide-h' }, { coords: [50, 0, 50, 100], class: 'guide-v' }, { coords: [0, 0, 100, 100], class: 'guide-d1' }, { coords: [100, 0, 0, 100], class: 'guide-d2' } ];
+    lines.forEach(lineInfo => { const line = document.createElementNS("http://www.w3.org/2000/svg", "line"); line.setAttribute("class", lineInfo.class); line.setAttribute("x1", lineInfo.coords[0]); line.setAttribute("y1", lineInfo.coords[1]); line.setAttribute("x2", lineInfo.coords[2]); line.setAttribute("y2", lineInfo.coords[3]); line.setAttribute("stroke", color); line.setAttribute("fill", "none"); /* The Fix */ svg.appendChild(line); });
+    return svg;
+  }
+
+  function createHanziBox(size, guideStyleClass, guideColor) { const box = document.createElement('div'); box.className = 'hanzi-box'; box.style.width = size.toFixed(2) + 'mm'; box.style.height = size.toFixed(2) + 'mm'; const guideSvg = createGuideSVG(guideStyleClass, guideColor); box.appendChild(guideSvg); return box; }
+
+  function renderCharacterSVG(data, strokeIndex, mainColor, prevColor = mainColor) { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 1024 1024"); svg.setAttribute("class", "hanzi-svg"); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); const scale = CONFIG.charScaleFactor; const transform = `translate(50, 900) scale(${scale}, -${scale})`; group.setAttribute("transform", transform); svg.appendChild(group); const numStrokes = data.strokes.length; for (let i = 0; i < numStrokes; i++) { if (!data.strokes[i]) continue; const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", data.strokes[i]); let fillColor = mainColor; if (strokeIndex >= 0 && strokeIndex < numStrokes) { if (i < strokeIndex) fillColor = prevColor; else if (i > strokeIndex) fillColor = 'none'; } path.setAttribute("fill", fillColor); group.appendChild(path); } return svg; }
+
+  // --- Sheet Generation State & Logic ---
+  let currentCharacterContainer = null; let currentRow = null; let boxesInCurrentRow = 0; let currentBoxesPerRow = CONFIG.defaultBoxesPerRow;
+  function startNewCharacterGroup(containerElement) { currentCharacterContainer = containerElement; currentRow = null; boxesInCurrentRow = 0; }
+  function addBoxToCurrentCharacterGroup(box) { if (!currentCharacterContainer) { console.error("Internal Error: Trying to add box before starting a character group."); return; } if (currentRow === null || boxesInCurrentRow >= currentBoxesPerRow) { currentRow = document.createElement('div'); currentRow.className = 'character-row'; currentCharacterContainer.appendChild(currentRow); boxesInCurrentRow = 0; } currentRow.appendChild(box); boxesInCurrentRow++; }
+
+  /** Main function */
+  async function generateSheet() {
+    // --- Get User Inputs ---
+    const hanziInput = document.getElementById('hanziInput').value; const boxesPerRow = parseInt(document.getElementById('boxesPerRow').value) || CONFIG.defaultBoxesPerRow; currentBoxesPerRow = boxesPerRow; const minPracticeBoxesInput = parseInt(document.getElementById('minPracticeBoxesInput').value); const effectiveMinPracticeBoxes = (isNaN(minPracticeBoxesInput) || minPracticeBoxesInput < 0) ? CONFIG.defaultMinPracticeBoxes : minPracticeBoxesInput; const minRowsInput = parseInt(document.getElementById('minRowsInput').value); const effectiveMinRows = (isNaN(minRowsInput) || minRowsInput < 1) ? CONFIG.defaultMinRows : minRowsInput; const guideLineStyle = document.getElementById('guideLineStyle').value || CONFIG.defaultGuideLineStyle; const shouldSort = document.getElementById('sortStrokesInput').checked; const fadedGuide = document.getElementById('fadedGuideInput').checked; const guideColor = document.getElementById('guideColorInput').value; const fadedColor = document.getElementById('fadedColorInput').value; const strokeColor = document.getElementById('strokeColorInput').value; const strokeGrayColor = document.getElementById('strokeGrayColorInput').value; const tracingColor = document.getElementById('tracingColorInput').value;
+    // --- Prepare Sheet ---
+    const boxSize = calculateBoxSize(boxesPerRow); const sheetContainer = document.getElementById('sheet'); sheetContainer.innerHTML = `<p class="loading-message">Loading character data...</p>`; const guideStyleClass = `guide-style-${guideLineStyle}`;
+    // --- Character Processing & Loading ---
+    const uniqueChars = Array.from(new Set(hanziInput.match(/[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/g) || [])); const characterLoadResults = { success: [], errors: [] }; if (uniqueChars.length === 0) { sheetContainer.innerHTML = '<p class="error-message">No valid Hanzi characters entered.</p>'; return; } try { const promises = uniqueChars.map(char => HanziWriter.loadCharacterData(char).then(data => ({ status: 'success', char, data })).catch(error => ({ status: 'error', char, reason: error }))); const settledResults = await Promise.all(promises); settledResults.forEach(outcome => { if (outcome.status === 'success' && outcome.data?.strokes?.length > 0) { characterLoadResults.success.push({ char: outcome.char, data: outcome.data, strokeCount: outcome.data.strokes.length }); } else if (outcome.status === 'error') { characterLoadResults.errors.push({ char: outcome.char, reason: outcome.reason }); console.error(`Failed to load data for character: ${outcome.char}`, outcome.reason); } else { const charWithError = outcome.char || 'unknown'; const reason = 'Invalid data structure or empty strokes'; characterLoadResults.errors.push({ char: charWithError, reason }); console.warn(`Data loaded for ${charWithError} but seems invalid or empty.`); }}); } catch (error) { console.error("Error during character data loading phase:", error); sheetContainer.innerHTML = '<p class="error-message">An unexpected error occurred while loading character data. See console.</p>'; return; }
+    let charactersToProcess = characterLoadResults.success; if (shouldSort) { charactersToProcess.sort((a, b) => a.strokeCount - b.strokeCount); } else { charactersToProcess.sort((a, b) => uniqueChars.indexOf(a.char) - uniqueChars.indexOf(b.char)); } sheetContainer.innerHTML = ''; if (charactersToProcess.length === 0) { sheetContainer.innerHTML = '<p class="error-message">Could not load data for any valid Hanzi characters.</p>'; }
+    // --- Render Sheet ---
+    charactersToProcess.forEach(charInfo => {
+        const { char, data, strokeCount } = charInfo;
+        const charContainer = document.createElement('div'); charContainer.className = 'character-container'; sheetContainer.appendChild(charContainer);
+        const titleDiv = document.createElement('div'); titleDiv.className = 'character-title'; titleDiv.textContent = `Character: ${char} (${strokeCount} strokes)`; charContainer.appendChild(titleDiv);
+        startNewCharacterGroup(charContainer); let totalBoxesForChar = 0;
+        const createAndAddBox = (contentRenderer = null) => { const box = createHanziBox(boxSize, guideStyleClass, guideColor); if (contentRenderer) { contentRenderer(box, data); } addBoxToCurrentCharacterGroup(box); totalBoxesForChar++; };
+        const renderEmptyOrFadedBox = (box, data) => { if (fadedGuide) { const charSvg = renderCharacterSVG(data, -1, fadedColor); box.appendChild(charSvg); }};
+        // Box Generation Sequence
+        for (let i = 0; i < strokeCount; i++) { createAndAddBox((box, data) => { const charSvg = renderCharacterSVG(data, i, strokeColor, strokeGrayColor); box.appendChild(charSvg); }); }
+        for (let i = 0; i < 2; i++) { createAndAddBox((box, data) => { const charSvg = renderCharacterSVG(data, -1, tracingColor); box.appendChild(charSvg); }); }
+        for (let i = 0; i < effectiveMinPracticeBoxes; i++) { createAndAddBox(renderEmptyOrFadedBox); }
+        const currentOccupiedRows = Math.max(1, Math.ceil(totalBoxesForChar / boxesPerRow)); const targetRowCount = Math.max(currentOccupiedRows, effectiveMinRows); const targetTotalBoxes = targetRowCount * boxesPerRow; const boxesToAddForRows = Math.max(0, targetTotalBoxes - totalBoxesForChar); for (let i = 0; i < boxesToAddForRows; i++) { createAndAddBox(renderEmptyOrFadedBox); }
+        const finalRemainder = totalBoxesForChar % boxesPerRow; if (finalRemainder !== 0) { const boxesToFillLastRow = boxesPerRow - finalRemainder; for (let i = 0; i < boxesToFillLastRow; i++) { createAndAddBox(renderEmptyOrFadedBox); }}
+    }); // End of character loop
+    // --- Final Error Reporting ---
+     if (characterLoadResults.errors.length > 0) { const errorDiv = document.createElement('div'); errorDiv.className = 'error-message'; const errorList = characterLoadResults.errors.map(err => `${err.char} (${err.reason?.message || err.reason || 'Unknown error'})`).join(', '); errorDiv.textContent = `Could not load or process data for: ${errorList}`; sheetContainer.appendChild(errorDiv); }
+  } // End generateSheet
+
+  // --- Initialization ---
+  window.onload = () => {
+      document.getElementById('boxesPerRow').value = CONFIG.defaultBoxesPerRow; document.getElementById('minPracticeBoxesInput').value = CONFIG.defaultMinPracticeBoxes; document.getElementById('minRowsInput').value = CONFIG.defaultMinRows; document.getElementById('guideLineStyle').value = CONFIG.defaultGuideLineStyle; document.getElementById('fadedGuideInput').checked = CONFIG.defaultFadedGuide; document.getElementById('sortStrokesInput').checked = CONFIG.defaultSortStrokes;
+      document.getElementById('guideColorInput').value = CONFIG.defaultGuideColor; document.getElementById('fadedColorInput').value = CONFIG.defaultFadedGuideColor; document.getElementById('strokeColorInput').value = CONFIG.defaultStrokeColor; document.getElementById('strokeGrayColorInput').value = CONFIG.defaultStrokeGrayColor; document.getElementById('tracingColorInput').value = CONFIG.defaultTracingColor;
+      generateSheet();
+  };
+</script>
+
+</body>
+</html>
